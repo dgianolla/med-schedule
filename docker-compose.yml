@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/schedule_db
+      - APPHEALTH_BASE_URL=https://back.apphealth.com.br:9090/api-vita
+      - APPHEALTH_API_KEY=${APPHEALTH_API_KEY:-your-api-key-here}
+      - 'CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]'
+      - LOG_LEVEL=debug
+      - ENV=development
+      - API_PREFIX=/api/v1
+    depends_on:
+      - db
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=schedule_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  adminer:
+    image: adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
