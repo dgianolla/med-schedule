@@ -33,7 +33,13 @@ export default function LoginPage() {
       })
       
       if (!res.ok) {
-        throw new Error('Credenciais inválidas')
+        const errorData = await res.json().catch(() => null)
+        const detail =
+          typeof errorData?.detail === 'string'
+            ? errorData.detail
+            : `Falha no login (${res.status})`
+
+        throw new Error(detail)
       }
       
       const data = await res.json()
@@ -43,7 +49,12 @@ export default function LoginPage() {
       router.push('/agenda')
       router.refresh()
     } catch (err) {
-      setError('Acesso negado. Verifique seu usuário e senha.')
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Nao foi possivel autenticar. Verifique a conexao com a API.'
+
+      setError(message)
     } finally {
       setLoading(false)
     }

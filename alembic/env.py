@@ -13,12 +13,15 @@ from alembic import context
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from app.models.base import Base
-from app.models.appointment import Appointment
-from app.models.appointment_type import AppointmentType
+from app.models.patient import Patient
+from app.models.convenio import Convenio
 from app.models.professional import Professional
+from app.models.appointment_type import AppointmentType
+from app.models.appointment import Appointment
 from app.models.availability import AvailabilityBlock
-from app.models.settings import SchedulingSettings
 from app.models.provider_route import ProviderRoute
+from app.models.settings import SchedulingSettings
+from app.models.user import User
 
 from app.config import settings as app_settings
 

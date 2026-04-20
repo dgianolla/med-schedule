@@ -13,7 +13,14 @@ from app.middleware.error_handler import (
     business_logic_exception_handler,
     BusinessLogicError,
 )
-from app.routes import lia, appointments, availability, reference, patients, convenios
+from app.routes import lia, appointments, availability, reference, patients, convenios, auth
+from app.middleware.auth_deps import verify_token
+from fastapi import Depends
+from passlib.context import CryptContext
+from sqlalchemy.future import select
+from app.models.user import User
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 structlog.configure(
     processors=[
@@ -35,10 +42,27 @@ structlog.configure(
 logger = structlog.get_logger()
 
 
+async def ensure_admin_user():
+    async with async_session() as session:
+        stmt = select(User).where(User.username == settings.ADMIN_USERNAME)
+        result = await session.execute(stmt)
+        user = result.scalars().first()
+        if not user:
+            logger.info("seed", message="Creating default admin user")
+            hashed_password = pwd_context.hash(settings.ADMIN_PASSWORD)
+            admin = User(
+                username=settings.ADMIN_USERNAME,
+                hashed_password=hashed_password,
+                is_active=True
+            )
+            session.add(admin)
+            await session.commit()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     logger.info("startup", message="Starting Schedule API")
+    await ensure_admin_user()
     yield
     logger.info("shutdown", message="Shutting down Schedule API")
 
@@ -65,29 +89,43 @@ app.add_exception_handler(Exception, generic_exception_handler)
 app.add_exception_handler(BusinessLogicError, business_logic_exception_handler)
 
 # Include routers
+# Security and Auth
+app.include_router(
+    auth.router,
+    prefix=settings.API_PREFIX,
+)
+
+# Open Agent Endpoints
 app.include_router(
     lia.router,
     prefix=settings.API_PREFIX,
 )
+
+# Secured Admin Endpoints
 app.include_router(
     appointments.router,
     prefix=settings.API_PREFIX,
+    dependencies=[Depends(verify_token)]
 )
 app.include_router(
     availability.router,
     prefix=settings.API_PREFIX,
+    dependencies=[Depends(verify_token)]
 )
 app.include_router(
     reference.router,
     prefix=settings.API_PREFIX,
+    dependencies=[Depends(verify_token)]
 )
 app.include_router(
     patients.router,
     prefix=settings.API_PREFIX,
+    dependencies=[Depends(verify_token)]
 )
 app.include_router(
     convenios.router,
     prefix=settings.API_PREFIX,
+    dependencies=[Depends(verify_token)]
 )
 
 

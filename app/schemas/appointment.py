@@ -2,7 +2,9 @@ from datetime import datetime, date
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from uuid import UUID
+
+from pydantic import BaseModel, Field, field_validator, field_serializer
 
 
 class CreateAppointmentRequest(BaseModel):
@@ -95,5 +97,19 @@ class AppointmentListResponse(BaseModel):
     scheduled_at: datetime
     status: str
     source: str
+
+    @field_serializer("patient_name")
+    def mask_name(self, name: str, _info):
+        parts = name.strip().split()
+        if len(parts) > 1:
+            return f"{parts[0]} {''.join([p[0] + '.' for p in parts[1:]])}"
+        return name
+
+    @field_serializer("patient_phone")
+    def mask_phone(self, phone: str, _info):
+        clean = "".join(filter(str.isdigit, phone))
+        if len(clean) >= 10:
+            return f"({clean[:2]}) 9****-**{clean[-2:]}"
+        return "***"
 
     model_config = {"from_attributes": True}

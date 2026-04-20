@@ -2,7 +2,9 @@ from datetime import date, datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from uuid import UUID
+
+from pydantic import BaseModel, Field, field_serializer
 
 
 class PatientCreate(BaseModel):
@@ -44,7 +46,19 @@ class PatientListResponse(BaseModel):
     id: UUID
     name: str
     phone: str
-    document: Optional[str] = None
-    birth_date: Optional[date] = None
+
+    @field_serializer("name")
+    def mask_name(self, name: str, _info):
+        parts = name.strip().split()
+        if len(parts) > 1:
+            return f"{parts[0]} {''.join([p[0] + '.' for p in parts[1:]])}"
+        return name
+
+    @field_serializer("phone")
+    def mask_phone(self, phone: str, _info):
+        clean = "".join(filter(str.isdigit, phone))
+        if len(clean) >= 10:
+            return f"({clean[:2]}) 9****-**{clean[-2:]}"
+        return "***"
 
     model_config = {"from_attributes": True}

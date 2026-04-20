@@ -31,12 +31,25 @@ export async function apiFetch<T>(
     if (qs) url += `?${qs}`;
   }
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (typeof document !== "undefined") {
+    const match = document.cookie.match(/(^| )med_auth_token=([^;]+)/);
+    if (match && match[2]) {
+      headers["Authorization"] = `Bearer ${match[2]}`;
+    }
+  }
+
+  const finalHeaders = {
+    ...headers,
+    ...(fetchOptions?.headers as Record<string, string>),
+  };
+
   const res = await fetch(url, {
     ...fetchOptions,
-    headers: {
-      "Content-Type": "application/json",
-      ...fetchOptions?.headers,
-    },
+    headers: finalHeaders,
   });
 
   if (!res.ok) {
