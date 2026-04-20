@@ -62,7 +62,14 @@ async def ensure_admin_user():
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     logger.info("startup", message="Starting Schedule API")
-    await ensure_admin_user()
+    try:
+        await ensure_admin_user()
+    except Exception as exc:
+        logger.error(
+            "startup_seed_failed",
+            message="Failed to ensure default admin user",
+            error=str(exc),
+        )
     yield
     logger.info("shutdown", message="Shutting down Schedule API")
 
