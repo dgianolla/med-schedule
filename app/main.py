@@ -2,6 +2,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 import structlog
 
@@ -9,7 +11,6 @@ from app.config import settings
 from app.database import engine, async_session
 from app.middleware.error_handler import (
     validation_exception_handler,
-    generic_exception_handler,
     business_logic_exception_handler,
     BusinessLogicError,
 )
@@ -81,7 +82,32 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS Middleware
+class CatchAllExceptionsMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        try:
+            return await call_next(request)
+        except Exception as exc:
+            logger.error(
+                "unexpected_error",
+                path=request.url.path,
+                method=request.method,
+                error=str(exc),
+                exc_info=True,
+            )
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "An unexpected error occurred",
+                    }
+                },
+            )
+
+
+# Middleware order: last added is outermost. CORS must wrap the exception
+# catcher so 500 responses still carry Access-Control-Allow-Origin.
+app.add_middleware(CatchAllExceptionsMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -90,9 +116,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Exception handlers
+# Exception handlers (HTTP-level; run inside CORS via ExceptionMiddleware)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
-app.add_exception_handler(Exception, generic_exception_handler)
 app.add_exception_handler(BusinessLogicError, business_logic_exception_handler)
 
 # Include routers

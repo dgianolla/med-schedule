@@ -27,27 +27,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-async def generic_exception_handler(request: Request, exc: Exception):
-    """Handle unexpected errors with structured responses."""
-    logger.error(
-        "unexpected_error",
-        path=request.url.path,
-        method=request.method,
-        error=str(exc),
-        exc_info=True,
-    )
-
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": {
-                "code": "INTERNAL_ERROR",
-                "message": "An unexpected error occurred",
-            }
-        },
-    )
-
-
 class BusinessLogicError(Exception):
     """Custom exception for business logic errors."""
 
